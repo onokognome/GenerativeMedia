@@ -1,1 +1,1 @@
-ocamlfind ocamlc -syntax camlp4o -package lwt.unix -package lwt -package lwt.syntax -linkpkg -o wtst wavefile.ml
+ocamlfind ocamlc -syntax camlp4o -package lwt.unix -package lwt -package lwt.syntax -linkpkg -thread -o wtst wavefile.ml

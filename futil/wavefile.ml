@@ -1,35 +1,43 @@
 
-let  cell_lst = ["inC1a.wav"; "inC2a.wav"; "inC3a.wav"; "inC4a.wav"; "inC5a.wav";
-   "inC6a.wav"; "inC7a.wav"; "inC8a.wav"; "inC9a.wav"; "inC10a.wav"]
+let  cell_lst = ["inC1.wav"; "inC2.wav"; "inC3.wav"; "inC4.wav"; "inC5.wav";
+"inC6.wav"; "inC7.wav"; "inC8.wav"; "inC9.wav"; "inC10.wav"; "inC11.wav"; "inC12.wav";
+"inC13.wav"; "inC14.wav"; "inC15.wav"; "inC16.wav"; "inC17.wav"; "inC18.wav";
+"inC19.wav"; "inC20.wav"; "inC21.wav"; "inC22.wav"; "inC23.wav"; "inC24.wav"; "inC25.wav";
+"inC26.wav"; "inC27.wav"; "inC28.wav"; "inC29.wav"; "inC30.wav"; "inC31.wav"; "inC32.wav";
+"inC33.wav"; "inC34.wav"; "inC35.wav"; "inC36.wav"; "inC37.wav"; "inC38.wav"; "inC39.wav";
+"inC40.wav"; "inC41.wav"; "inC42.wav"; "inC43.wav"; "inc44.wav"; "inC45.wav"; "inC46.wav";
+"inC47.wav"; "inC48.wav"; "inC49.wav"; "inC50.wav"; "inC51.wav"; "inC52.wav"; "inC53.wav"]
 
-let cell_location = "/home/dmakofka/inC/static/"
+let cell_location = "/home/doug/GenerativeMedia/inC/cells/"
 
 let sample_bytes_per_second = 4        (* bytes per sample - 2 lft 2 rt *)
                               * 44100  (* samples per second *)
 
+let infile_hash = Hashtbl.create 53
+    
 let read_riff fi =
   let b = Bytes.create 4 in
   lwt _ = Lwt_io.read_into_exactly fi b 0 4 in
-  lwt _ = Lwt_io.printlf "chunk:%s" (Bytes.to_string b) in
+(*d  lwt _ = Lwt_io.printlf "chunk:%s" (Bytes.to_string b) in *)
   lwt i = Lwt_io.LE.read_int32 fi in
-  lwt _ = Lwt_io.printlf "size:%li" i in
-  lwt _ = Lwt_io.read_into_exactly fi b 0 4  in
-  Lwt_io.printlf "%s" (Bytes.to_string b)
+(*d  lwt _ = Lwt_io.printlf "size:%li" i in *)
+(*d  lwt _ =*) Lwt_io.read_into_exactly fi b 0 4 (*d  in
+  Lwt_io.printlf "%s" (Bytes.to_string b) *)
 
 let read_chunk_hdr fi bytes_to_skip =
   let b = Bytes.create 1024 in
   let _ = 
     if bytes_to_skip > 0 then
-     let _ = Lwt_io.printlf "skipping %i bytes" bytes_to_skip in
+(*d     let _ = Lwt_io.printlf "skipping %i bytes" bytes_to_skip in *)
      Lwt_io.read_into_exactly fi b 0 bytes_to_skip
     else Lwt.return () in
   let b = Bytes.create 4 in
   lwt _ = Lwt_io.read_into_exactly fi b 0 4 in
-  let c = Bytes.to_string b in
-  lwt _ = Lwt_io.printlf "chunk:%s" c in
+(*  let c = Bytes.to_string b in *)
+(*d  lwt _ = Lwt_io.printlf "chunk:%s" (Bytes.to_string b) in *)
   lwt i = Lwt_io.LE.read_int32 fi in
-  lwt _ = Lwt_io.printlf "size:%i" (Int32.to_int i) in
-  Lwt.return (c,(Int32.to_int i))
+(*d  lwt _ = Lwt_io.printlf "size:%i" (Int32.to_int i) in *)
+  Lwt.return ((Bytes.to_string b), (Int32.to_int i))
 
 
 let read_header fi =
@@ -44,6 +52,22 @@ let read_header fi =
   chunk_name := c; size := b;
   Lwt.return !size
 
+(**
+ * get_infile_buffer : string -> (Bytes,int)
+ * open the input file on the first access, then read the header to get the size, read the file,
+ * then put the buffer and the size
+ * in a hash table for future access. This means the file is only read into the buffer once.
+ *)
+let get_infile_buffer fname =
+  try
+    Lwt.return (Hashtbl.find infile_hash fname)
+  with _ -> lwt fi = Lwt_io.open_file Lwt_io.Input (cell_location ^ fname) in
+   lwt data_sz = read_header fi in
+   lwt buf = Lwt.return (Bytes.create data_sz) in
+   lwt _ = Lwt_io.read_into_exactly fi buf 0 data_sz in
+   lwt _ = Lwt_io.close fi in
+   Hashtbl.add infile_hash fname (buf,data_sz);
+   Lwt.return (buf,data_sz)
 
 let write_wav_hdr fo secs =
   let sample_bytes = secs * sample_bytes_per_second in
@@ -75,16 +99,18 @@ let start_player pval mixer_mbox samples =
  let cycles = ref (pval*3) in
  let times = ref 0 in
    lwt _ = Lwt_io.printlf "p:%i:%s" pval (cell_location ^ cell) in
-   lwt fi = Lwt_io.open_file Lwt_io.Input (cell_location ^ cell) in
+   (*replaced by a read-once hash table of buffers
+	      lwt fi = Lwt_io.open_file Lwt_io.Input (cell_location ^ cell) in
    lwt data_sz = read_header fi in
    lwt buf = Lwt.return (Bytes.create data_sz) in
-   lwt _ = Lwt_io.read_into_exactly fi buf 0 data_sz in
+   lwt _ = Lwt_io.read_into_exactly fi buf 0 data_sz in *)
+   lwt buf, data_sz = get_infile_buffer cell in
    lwt in_chan = Lwt.return(Lwt_io.of_bytes Lwt_io.Input (Lwt_bytes.of_bytes buf)) in
    lwt _ =  times := data_sz/4; Lwt.return () in
    while_lwt (!times > 0) && (!total_samples > 0) do
      lwt l = Lwt_io.LE.read_int16 in_chan in
      lwt r = Lwt_io.LE.read_int16 in_chan in
-(*     lwt _ = Lwt_io.printf "p%i:s:%i:t:%i:(%i,%i) " pval !total_samples !times l r in *)
+(*d     lwt _ = Lwt_io.printf "p%i:s:%i:t:%i:(%i,%i) " pval !total_samples !times l r in *)
      lwt _ = Lwt_mvar.put mixer_mbox (l,r) in
      decr times; decr total_samples;
      if !times = 0 then (
@@ -105,7 +131,7 @@ let rec mixer mbox_lst fo times =
  lwt sl, sr = Lwt_list.fold_left_s (fun (il, ir) (l,r) -> Lwt.return ((il + l), (ir + r)) ) (0,0) smpl_lst in
  lwt _ = Lwt_io.write_int16 fo sl in
  lwt _ = Lwt_io.write_int16 fo sr in
- lwt _ = Lwt_io.flush fo in
+(* lwt _ = Lwt_io.flush fo in *)
 (* lwt _ = Lwt_io.printlf "sample:%i" times in *) 
  if times > 1 then mixer mbox_lst fo (times - 1) else Lwt.return ()
 
@@ -129,9 +155,9 @@ let do_it players seconds out_filename =
     ] in  Lwt.return out_filename
 
 
-(*
+
 let _ = Lwt_main.run (
- do_it 4 30 "inCout.wav"
+ do_it 10 90 "inCout.wav"
 
           )
-*)
+
