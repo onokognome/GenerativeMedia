@@ -1,17 +1,5 @@
 For example, MPD excerpt with a SegmentTemplate that is based on a SegmentTimeline is shown below.
-
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
+```
 <Representation mimeType="video/mp4"
                    frameRate="24"
                    bandwidth="1558322"
@@ -31,3 +19,4 @@ http://cdn.bitmovin.net/bbb/video-1500/segment-0.m4s
 http://cdn.bitmovin.net/bbb/video-1500/segment-48.m4s
 http://cdn.bitmovin.net/bbb/video-1500/segment-96.m4s
 …
+```
