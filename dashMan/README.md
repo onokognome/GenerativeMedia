@@ -1,3 +1,14 @@
+Time Based SegmentTemplate
+The SegmentTemplate element could also contain a $Time$ identifier, which will be substituted with the value of the t attribute from the SegmentTimeline. The SegmentTimeline element provides an alternative to the duration attribute with additional features such as:
+
+specifying arbitrary segment durations
+specifying exact segment durations
+specifying discontinuities in the media timeline
+The SegmentTimeline also uses run-length compression, which is especially efficient when having a sequence of segments with the same duration. When SegmentTimline is used with SegmentTemplate then the following conditions must apply:
+
+at least one sidx box shall be present
+all values of the SegmentTimeline shall describe accurate
+timing, equal to the information in the sidx box
 For example, MPD excerpt with a SegmentTemplate that is based on a SegmentTimeline is shown below.
 ```
 <Representation mimeType="video/mp4"
